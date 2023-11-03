@@ -72,6 +72,11 @@
           .mask-name {
             font-size: 14px;
             font-weight: bold;
+            .mask-share {
+              font-size: 12px;
+              margin-left: 5px;
+              color: var(--primary);
+            }
           }
           .mask-info {
             font-size: 12px;

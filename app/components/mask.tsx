@@ -12,6 +12,7 @@ import DeleteIcon from "../icons/delete.svg";
 import EyeIcon from "../icons/eye.svg";
 import CopyIcon from "../icons/copy.svg";
 import DragIcon from "../icons/drag.svg";
+import ReloadIcon from "../icons/reload.svg";
 
 import { DEFAULT_MASK_AVATAR, Mask, useMaskStore } from "../store/mask";
 import {
@@ -49,6 +50,8 @@ import {
   Draggable,
   OnDragEndResponder,
 } from "@hello-pangea/dnd";
+
+import { getMaskData, uploadMaskData } from "../api/mask";
 
 // drag and drop helper function
 function reorder<T>(list: T[], startIndex: number, endIndex: number): T[] {
@@ -398,7 +401,7 @@ export function MaskPage() {
     setSearchText(text);
     if (text.length > 0) {
       const result = allMasks.filter((m) =>
-        m.name.toLowerCase().includes(text.toLowerCase())
+        m.name.toLowerCase().includes(text.toLowerCase()),
       );
       setSearchMasks(result);
     } else {
@@ -434,7 +437,35 @@ export function MaskPage() {
       } catch {}
     });
   };
-
+  // 下载更新面具
+  const downloadUpdates = () => {
+    getMaskData().then((res: any) => {
+      if (res.data.affectedDocs > 0) {
+        res.data.data.forEach((item: any) => {
+          const m: Mask = JSON.parse(item.content);
+          const mask = maskStore.get(m.id);
+          if (mask) {
+            maskStore.updateMask(m.id, (mask: Mask) => {
+              // 将m的属性赋值给mask
+              Object.assign(mask, m);
+            });
+          } else {
+            maskStore.create(m);
+          }
+        });
+      }
+    });
+  };
+  // 上传更新面具
+  const uploadUpdates = (m: Mask) => {
+    m.share = true;
+    uploadMaskData({
+      masks: JSON.stringify(m),
+    }).then((res) => {
+      console.log(res);
+      downloadUpdates();
+    });
+  };
   return (
     <ErrorBoundary>
       <div className={styles["mask-page"]}>
@@ -449,6 +480,14 @@ export function MaskPage() {
           </div>
 
           <div className="window-actions">
+            <div className="window-action-button">
+              <IconButton
+                icon={<DownloadIcon />}
+                bordered
+                onClick={downloadUpdates}
+                text="下载更新"
+              />
+            </div>
             <div className="window-action-button">
               <IconButton
                 icon={<DownloadIcon />}
@@ -526,7 +565,12 @@ export function MaskPage() {
                     <MaskAvatar mask={m} />
                   </div>
                   <div className={styles["mask-title"]}>
-                    <div className={styles["mask-name"]}>{m.name}</div>
+                    <div className={styles["mask-name"]}>
+                      {m.name}
+                      <span className={styles["mask-share"]}>
+                        {m.share ? "【已共享】" : ""}
+                      </span>
+                    </div>
                     <div className={styles["mask-info"] + " one-line"}>
                       {`${Locale.Mask.Item.Info(m.context.length)} / ${
                         ALL_LANG_OPTIONS[m.lang]
@@ -535,6 +579,13 @@ export function MaskPage() {
                   </div>
                 </div>
                 <div className={styles["mask-actions"]}>
+                  {!m.builtin && (
+                    <IconButton
+                      icon={m.share ? <ReloadIcon /> : <UploadIcon />}
+                      text={m.share ? "更新" : "上传"}
+                      onClick={() => uploadUpdates(m)}
+                    />
+                  )}
                   <IconButton
                     icon={<AddIcon />}
                     text={Locale.Mask.Item.Chat}
